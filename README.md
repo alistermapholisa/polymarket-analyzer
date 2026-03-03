@@ -415,7 +415,7 @@ MIT License - See LICENSE file for details
 
 - GitHub Issues: Report bugs and request features
 - Discussions: Ask questions and share ideas
-- Email: your.public@listermapholisa.com
+- Email: public@listermapholisa.com
 
 ## Acknowledgments
 
