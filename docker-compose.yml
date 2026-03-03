@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: polymarket-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: polymarket
+      MYSQL_USER: polymarket
+      MYSQL_PASSWORD: polymarket123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./drizzle:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - polymarket-network
+
+  # Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: polymarket-analyzer
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: mysql://polymarket:polymarket123@mysql:3306/polymarket
+      PORT: 3000
+      AWS_REGION: us-east-1
+    ports:
+      - "3000:3000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/dist
+    networks:
+      - polymarket-network
+    command: npm run dev
+
+  # Redis Cache (Optional)
+  redis:
+    image: redis:7-alpine
+    container_name: polymarket-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - polymarket-network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: polymarket-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      - app
+    networks:
+      - polymarket-network
+
+volumes:
+  mysql-data:
+  redis-data:
+
+networks:
+  polymarket-network:
+    driver: bridge
